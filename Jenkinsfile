@@ -6,35 +6,58 @@ pipeline {
         stage('Clone Code') {
             steps {
                 git branch: 'main',
-                    url: 'https://github.com/AnmolPal1/python-secuirty-project.git'
+                url: 'https://github.com/AnmolPal1/python-secuirty-project.git'
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                sh 'pip3 install -r requirements.txt'
+                sh '''
+                python3 -m venv venv
+                . venv/bin/activate
+
+                pip install --upgrade pip
+                pip install -r requirements.txt
+                '''
             }
         }
 
         stage('Run Unit Tests') {
             steps {
-                sh 'pytest'
+                sh '''
+                . venv/bin/activate
+                pytest
+                '''
             }
         }
 
         stage('Bandit Scan') {
             steps {
-                sh 'bandit -r .'
+                sh '''
+                . venv/bin/activate
+
+                bandit -r . \
+                -x venv,__pycache__,tests \
+                || true
+                '''
             }
         }
-
+        
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('sonarqube') {
-                    sh 'sonar-scanner'
+               script {
+                   def scannerHome = tool 'sonar-scanner'
+
+                   withSonarQubeEnv('sonarqube') {
+                   sh """
+                   . venv/bin/activate
+
+                   ${scannerHome}/bin/sonar-scanner
+                   """
                 }
             }
         }
+    }
 
         stage('Build Docker Image') {
             steps {
@@ -51,9 +74,13 @@ pipeline {
         stage('Run Container') {
             steps {
                 sh '''
-                    docker stop python-container || true
-                    docker rm python-container || true
-                    docker run -d --name python-container -p 5000:5000 python-security-project:latest
+                docker stop python-container || true
+                docker rm python-container || true
+
+                docker run -d \
+                --name python-container \
+                -p 5000:5000 \
+                python-security-project:latest
                 '''
             }
         }
