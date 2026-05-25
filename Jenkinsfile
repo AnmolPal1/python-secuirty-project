@@ -1,54 +1,61 @@
-pipeline{
+pipeline {
     agent any
 
-    stages{
-        stage('Clone Code'){
-            steps{
-                git branch:'main', url:'https://github.com/AnmolPal1/python-secuirty-project.git'
+    stages {
 
-                }
-            }
-        stage('Install Dependencies'){
-            steps{
-                sh 'pip install -r requirements.txt'
+        stage('Clone Code') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/AnmolPal1/python-secuirty-project.git'
             }
         }
-        stage('Run Unit Tests'){
-            steps{
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'pip3 install -r requirements.txt'
+            }
+        }
+
+        stage('Run Unit Tests') {
+            steps {
                 sh 'pytest'
             }
         }
-        stage('Bandit Scan'){
-            steps{
+
+        stage('Bandit Scan') {
+            steps {
                 sh 'bandit -r .'
             }
         }
-        stage('SonarQube Analysis'){
-            steps{
+
+        stage('SonarQube Analysis') {
+            steps {
                 withSonarQubeEnv('sonarqube') {
                     sh 'sonar-scanner'
                 }
             }
         }
-        stage("Build Docker Image"){
-            steps{
-                sh 'docker build -t python-security-project .'
+
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t python-security-project:latest .'
             }
         }
-        stage('Trivy Image Scan'){
-            steps{
+
+        stage('Trivy Image Scan') {
+            steps {
                 sh 'trivy image python-security-project:latest'
             }
         }
-        stage('Run Container'){
-            steps{
+
+        stage('Run Container') {
+            steps {
                 sh '''
-                docker stop python-container  true
-                docker rm python-container  true
-                docker run -d --name python-container -p 5000:5000 python-security-project:latest
+                    docker stop python-container || true
+                    docker rm python-container || true
+                    docker run -d --name python-container -p 5000:5000 python-security-project:latest
                 '''
             }
         }
-            
     }
 }
